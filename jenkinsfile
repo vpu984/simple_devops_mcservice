@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = 'vpu984'
-        IMAGE_NAME = 'simple-devops-mcservice'
+        DOCKERHUB_USER = 'vishal984'
+        IMAGE_NAME = 'simple-microservice'
         IMAGE_TAG = 'latest'
         KUBE_NAMESPACE = 'default'
     }
@@ -11,64 +11,57 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo '📥 Checking out source code...'
-                checkout scm
+                echo '📥 Checking out repository...'
+                checkout([$class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/vpu984/simple_devops_mcservice.git']]
+                ])
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    echo '🐳 Building Docker image...'
-                    sh "docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ."
-                }
+                echo '🐳 Building Docker image...'
+                bat '''
+                docker build -t %DOCKERHUB_USER%/%IMAGE_NAME%:%IMAGE_TAG% .
+                '''
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                script {
-                    echo '🚀 Pushing Docker image to Docker Hub...'
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                        sh """
-                        echo $PASS | docker login -u $USER --password-stdin
-                        docker push ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
-                        docker logout
-                        """
-                    }
-                }
+                echo '📤 Pushing Docker image to Docker Hub...'
+                bat '''
+                docker login -u %DOCKERHUB_USER% -p YOUR_DOCKERHUB_PASSWORD
+                docker push %DOCKERHUB_USER%/%IMAGE_NAME%:%IMAGE_TAG%
+                '''
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    echo '⚙️ Deploying Kubernetes manifests...'
-                    sh """
-                    kubectl apply -f k8s/service-deployment.yaml
-                    kubectl apply -f k8s/prometheus-config.yaml
-                    kubectl apply -f k8s/grafana-deployment.yaml
-                    """
-                }
+                echo '🚀 Deploying to Kubernetes...'
+                bat '''
+                kubectl apply -f k8s-deployment.yaml
+                kubectl apply -f k8s-service.yaml
+                '''
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                script {
-                    echo '🔍 Checking deployment...'
-                    sh """
-                    kubectl get pods
-                    kubectl get svc
-                    """
-                }
+                echo '🔍 Verifying deployment...'
+                bat '''
+                kubectl get pods -n %KUBE_NAMESPACE%
+                kubectl get svc -n %KUBE_NAMESPACE%
+                '''
             }
         }
     }
 
     post {
         success {
-            echo '✅ Pipeline finished successfully!'
+            echo '✅ Deployment pipeline completed successfully.'
         }
         failure {
             echo '❌ Pipeline failed — check logs for errors.'
