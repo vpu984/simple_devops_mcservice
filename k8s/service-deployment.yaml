@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: simple-service
-        image: YOUR_DOCKER_USER/simple-service:latest
+        image: vishal984/simple-microservice:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
