@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = 'YOUR_DOCKERHUB_USERNAME'
-        IMAGE_NAME = 'simple-service'
+        DOCKERHUB_USER = 'vpu984'
+        IMAGE_NAME = 'simple-devops-mcservice'
         IMAGE_TAG = 'latest'
         KUBE_NAMESPACE = 'default'
     }
@@ -43,11 +43,11 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    echo '⚙️ Deploying microservice and monitoring stack to Kubernetes...'
+                    echo '⚙️ Deploying Kubernetes manifests...'
                     sh """
-                    kubectl apply -f k8s/service-deployment.yaml --namespace ${KUBE_NAMESPACE}
-                    kubectl apply -f k8s/prometheus-config.yaml --namespace ${KUBE_NAMESPACE}
-                    kubectl apply -f k8s/grafana-deployment.yaml --namespace ${KUBE_NAMESPACE}
+                    kubectl apply -f k8s/service-deployment.yaml
+                    kubectl apply -f k8s/prometheus-config.yaml
+                    kubectl apply -f k8s/grafana-deployment.yaml
                     """
                 }
             }
@@ -56,10 +56,10 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 script {
-                    echo '🔍 Verifying deployments...'
+                    echo '🔍 Checking deployment...'
                     sh """
-                    kubectl get pods -n ${KUBE_NAMESPACE}
-                    kubectl get svc -n ${KUBE_NAMESPACE}
+                    kubectl get pods
+                    kubectl get svc
                     """
                 }
             }
@@ -68,10 +68,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment successful! Access Grafana and Prometheus dashboards.'
+            echo '✅ Pipeline finished successfully!'
         }
         failure {
-            echo '❌ Pipeline failed. Check logs for errors.'
+            echo '❌ Pipeline failed — check logs for errors.'
         }
     }
 }
