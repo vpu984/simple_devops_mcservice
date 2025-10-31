@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_USER = 'YOUR_DOCKERHUB_USERNAME'
+        IMAGE_NAME = 'simple-service'
+        IMAGE_TAG = 'latest'
+        KUBE_NAMESPACE = 'default'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out source code...'
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo '🐳 Building Docker image...'
+                    sh "docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ."
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    echo '🚀 Pushing Docker image to Docker Hub...'
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                        sh """
+                        echo $PASS | docker login -u $USER --password-stdin
+                        docker push ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                        docker logout
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    echo '⚙️ Deploying microservice and monitoring stack to Kubernetes...'
+                    sh """
+                    kubectl apply -f k8s/service-deployment.yaml --namespace ${KUBE_NAMESPACE}
+                    kubectl apply -f k8s/prometheus-config.yaml --namespace ${KUBE_NAMESPACE}
+                    kubectl apply -f k8s/grafana-deployment.yaml --namespace ${KUBE_NAMESPACE}
+                    """
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo '🔍 Verifying deployments...'
+                    sh """
+                    kubectl get pods -n ${KUBE_NAMESPACE}
+                    kubectl get svc -n ${KUBE_NAMESPACE}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Deployment successful! Access Grafana and Prometheus dashboards.'
+        }
+        failure {
+            echo '❌ Pipeline failed. Check logs for errors.'
+        }
+    }
+}
