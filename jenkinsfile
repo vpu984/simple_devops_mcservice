@@ -45,8 +45,6 @@ pipeline {
                 kubectl apply -f k8s/service-deployment.yaml
                 kubectl apply -f k8s/prometheus-config.yaml
                 kubectl apply -f k8s/grafana-deployment.yaml
-                kubectl port-forward svc/prometheus 9090:9090
-                kubectl port-forward svc/grafana 3000:3000
                 '''
             }
         }
